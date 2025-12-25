@@ -3,7 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 
 export default function HeroBanner({ movie }) {
+  // 1. Safety Check: If no movie or no image, don't break
   if (!movie) return null;
+  
+  // 2. Image Source with fallback
+  const imagePath = movie.backdrop_path 
+    ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}` 
+    : null;
 
   return (
     <div style={{ 
@@ -12,27 +18,30 @@ export default function HeroBanner({ movie }) {
       width: "100%", 
       display: "flex", 
       alignItems: "flex-end", 
-      padding: "40px" 
+      padding: "40px",
+      overflow: "hidden" // Keeps everything tidy
     }}>
-      {/* 
-         1. PERFORMANCE FIX: 
-         We use Next.js <Image /> with 'fill' and 'priority' for speed.
-         We use inline styles for 'objectFit' so it works without Tailwind.
-      */}
-      <Image
-        src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-        alt={movie.title}
-        fill
-        priority
-        sizes="100vw"
-        style={{ 
-          objectFit: "cover", // Ensures it covers the screen like a background
-          objectPosition: "center",
-          zIndex: -1 // Puts it behind the text
-        }}
-      />
+      
+      {/* LAYER 1: The Image (Bottom) */}
+      {imagePath ? (
+        <Image
+          src={imagePath}
+          alt={movie.title}
+          fill
+          priority
+          sizes="100vw"
+          style={{ 
+            objectFit: "cover",
+            objectPosition: "center",
+            zIndex: 0 // Sit at the bottom, but visible
+          }}
+        />
+      ) : (
+        // Fallback if image is missing from API
+        <div style={{ position: "absolute", inset: 0, background: "#222", zIndex: 0 }} />
+      )}
 
-      {/* 2. STYLE RESTORATION: Dark Gradient Overlay */}
+      {/* LAYER 2: The Gradient Overlay (Middle) */}
       <div
         style={{
           position: "absolute",
@@ -40,37 +49,57 @@ export default function HeroBanner({ movie }) {
           left: 0,
           right: 0,
           bottom: 0,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)",
-          zIndex: 0
+          background: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.9) 100%)",
+          zIndex: 10 // Sit on top of image
         }}
       />
 
-      {/* 3. CONTENT: Text and Buttons */}
-      <div style={{ position: "relative", zIndex: 10, maxWidth: "600px", color: "white" }}>
-        <h1 style={{ fontSize: "3.5rem", fontWeight: "bold", textShadow: "2px 2px 4px rgba(0,0,0,0.7)" }}>
+      {/* LAYER 3: The Text (Top) */}
+      <div style={{ 
+        position: "relative", 
+        zIndex: 20, // Sit on top of everything
+        maxWidth: "700px", 
+        color: "white" 
+      }}>
+        <h1 style={{ 
+          fontSize: "4rem", 
+          fontWeight: "bold", 
+          textShadow: "0 2px 10px rgba(0,0,0,0.5)",
+          marginBottom: "1rem",
+          lineHeight: "1.1"
+        }}>
           {movie.title}
         </h1>
 
-        <p style={{ marginTop: "10px", opacity: 0.9, fontSize: "1.1rem", lineHeight: "1.5" }}>
-          {movie.overview ? movie.overview.slice(0, 150) + "..." : ""}
+        <p style={{ 
+          fontSize: "1.1rem", 
+          lineHeight: "1.6", 
+          textShadow: "0 1px 4px rgba(0,0,0,0.8)",
+          marginBottom: "1.5rem",
+          color: "#e5e5e5"
+        }}>
+          {movie.overview ? movie.overview.slice(0, 200) + "..." : "No description available."}
         </p>
 
         <Link
           href={`/movie/${movie.id}`}
           style={{
-            display: "inline-block",
-            marginTop: "20px",
-            padding: "12px 25px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "12px 30px",
             border: "none",
-            borderRadius: "6px",
+            borderRadius: "8px",
             background: "#fff",
             color: "#000",
+            fontSize: "1.1rem",
             fontWeight: "bold",
             cursor: "pointer",
-            textDecoration: "none"
+            textDecoration: "none",
+            transition: "transform 0.2s ease"
           }}
         >
-          ▶ Watch Now
+          <span style={{ fontSize: "1.2rem" }}>▶</span> Watch Now
         </Link>
       </div>
     </div>
