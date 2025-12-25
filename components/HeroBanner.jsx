@@ -1,57 +1,44 @@
 "use client";
+import Image from "next/image";
+import Link from "next/link"; // Better for navigation than window.location
 
 export default function HeroBanner({ movie }) {
   if (!movie) return null;
 
-  const backdrop = `https://image.tmdb.org/t/p/original${movie.backdrop_path}`;
-
   return (
-    <div
-      style={{
-        height: "80vh",
-        backgroundImage: `url(${backdrop})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        position: "relative",
-        display: "flex",
-        alignItems: "flex-end",
-        padding: "40px",
-      }}
-    >
-      {/* Dark fade overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.9))",
-        }}
+    <div className="relative h-[80vh] w-full flex items-end p-10">
+      {/* 
+        OPTIMIZED BACKGROUND IMAGE 
+        'priority' = Load ASAP (Fixes LCP Score)
+        'quality={90}' = Looks crisp
+      */}
+      <Image
+        src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+        alt={movie.title}
+        fill
+        priority
+        className="object-cover -z-10"
+        sizes="100vw"
       />
 
-      <div style={{ position: "relative", maxWidth: "600px" }}>
-        <h1 style={{ fontSize: "3.5rem", fontWeight: "bold" }}>
+      {/* Dark Overlay Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-[#0a0a0a]" />
+
+      <div className="relative z-10 max-w-2xl text-white">
+        <h1 className="text-5xl md:text-6xl font-bold drop-shadow-lg">
           {movie.title}
         </h1>
 
-        <p style={{ marginTop: "10px", opacity: 0.9 }}>
-          {movie.overview?.slice(0, 150)}...
+        <p className="mt-4 text-lg text-gray-200 line-clamp-3 max-w-xl drop-shadow-md">
+          {movie.overview}
         </p>
 
-        <button
-          onClick={() => (window.location.href = `/movie/${movie.id}`)}
-          style={{
-            marginTop: "20px",
-            padding: "12px 25px",
-            border: "none",
-            borderRadius: "6px",
-            background: "#fff",
-            color: "#000",
-            fontWeight: "bold",
-            cursor: "pointer",
-          }}
+        <Link
+          href={`/movie/${movie.id}`}
+          className="mt-6 inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-lg font-bold hover:bg-gray-200 transition"
         >
           ▶ Watch Now
-        </button>
+        </Link>
       </div>
     </div>
   );
