@@ -1,16 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // 🚀 NEW: Replaces 'domains' with 'remotePatterns'
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'image.tmdb.org',
-        pathname: '/**', // Allow all paths from TMDB
+        pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'lh3.googleusercontent.com', // Allow Google Auth avatars
+        hostname: 'yt3.ggpht.com', // 👈 ADD THIS LINE
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
         pathname: '/**',
       },
     ],
