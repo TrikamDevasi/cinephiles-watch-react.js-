@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PROVIDER_LOGOS } from "../utils/providerLogos";
 
 /* =======================
@@ -39,7 +40,7 @@ export default function Row({ title, movies = [], badge }) {
   function badgeColor(b) {
     if (b === "OTT") return "#2563eb";
     if (b === "Today") return "#16a34a";
-    return "#b91c1c"; // Theatrical
+    return "#b91c1c";
   }
 
   if (!movies.length) return null;
@@ -62,102 +63,112 @@ export default function Row({ title, movies = [], badge }) {
           const providers = providersByMovie[movie.id];
 
           return (
-            <div
+            <Link
               key={movie.id}
-              className="movie-card"
-              onMouseEnter={() => fetchProviders(movie.id)}
-              onMouseMove={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const rx = (y - rect.height / 2) / 30;
-                const ry = -(x - rect.width / 2) / 30;
-                e.currentTarget.style.transform = `
-                  perspective(600px)
-                  rotateX(${rx}deg)
-                  rotateY(${ry}deg)
-                  scale(1.05)
-                `;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "none";
-              }}
-              style={{
-                minWidth: 150,
-                cursor: "pointer",
-                position: "relative",
-              }}
+              href={`/movie/${movie.id}`}
+              prefetch={false}
+              style={{ textDecoration: "none" }}
             >
-              {/* BADGE */}
-              {badge && (
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 8,
-                    left: 8,
-                    fontSize: 11,
-                    padding: "2px 6px",
-                    borderRadius: 4,
-                    background: badgeColor(badge),
-                    color: "#fff",
-                    zIndex: 2,
-                  }}
-                >
-                  {badge}
-                </span>
-              )}
+              <div
+                className="movie-card"
+                onMouseEnter={() => fetchProviders(movie.id)}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const rx = (y - rect.height / 2) / 30;
+                  const ry = -(x - rect.width / 2) / 30;
+                  e.currentTarget.style.transform = `
+                    perspective(600px)
+                    rotateX(${rx}deg)
+                    rotateY(${ry}deg)
+                    scale(1.05)
+                  `;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "none";
+                }}
+                style={{
+                  minWidth: 150,
+                  cursor: "pointer",
+                  position: "relative",
+                }}
+              >
+                {/* BADGE */}
+                {badge && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      left: 8,
+                      fontSize: 11,
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      background: badgeColor(badge),
+                      color: "#fff",
+                      zIndex: 2,
+                    }}
+                  >
+                    {badge}
+                  </span>
+                )}
 
-              {/* POSTER */}
-              <img
-                src={
-                  movie.poster_path
-                    ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
-                    : "/placeholder.png"
-                }
-                alt={movie.title}
-                loading="lazy"
-                decoding="async"
-                style={{ borderRadius: 8 }}
-              />
+                {/* POSTER */}
+                <img
+                  src={
+                    movie.poster_path
+                      ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
+                      : "/placeholder.png"
+                  }
+                  alt={movie.title}
+                  loading="lazy"
+                  decoding="async"
+                  style={{ borderRadius: 8 }}
+                />
 
-              {/* PROVIDERS */}
-              {providers && (
-                <div style={{ marginTop: 6 }}>
-                  {/* STREAMING */}
-                  {providers.streaming?.length > 0 && (
-                    <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
-                      {providers.streaming.map((p) => {
-                        const logo = PROVIDER_LOGOS[p.provider_id];
-                        if (!logo) return null;
-                        return (
-                          <img
-                            key={p.provider_id}
-                            src={logo}
-                            alt={p.provider_name}
-                            title={`Streaming on ${p.provider_name}`}
-                            style={{ width: 22, height: 22 }}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
+                {/* PROVIDERS */}
+                {providers && (
+                  <div style={{ marginTop: 6 }}>
+                    {providers.streaming?.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {providers.streaming.map((p) => {
+                          const logo = PROVIDER_LOGOS[p.provider_id];
+                          if (!logo) return null;
+                          return (
+                            <img
+                              key={p.provider_id}
+                              src={logo}
+                              alt={p.provider_name}
+                              title={`Streaming on ${p.provider_name}`}
+                              style={{ width: 22, height: 22 }}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
 
-                  {/* RENT / BUY (SUBTLE) */}
-                  {(providers.rent?.length > 0 ||
-                    providers.buy?.length > 0) && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        opacity: 0.6,
-                        marginTop: 2,
-                      }}
-                    >
-                      Rent / Buy available
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                    {(providers.rent?.length > 0 ||
+                      providers.buy?.length > 0) && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          opacity: 0.6,
+                          marginTop: 2,
+                        }}
+                      >
+                        Rent / Buy available
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Link>
           );
         })}
       </div>
