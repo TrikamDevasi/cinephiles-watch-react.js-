@@ -5,8 +5,17 @@ import CastGrid from "./CastGrid";
 import SimilarMovies from "./SimilarMovies";
 import Screenshots from "./Screenshots";
 import TrailerModal from "./TrailerModal";
+import { PROVIDER_LOGOS } from "@/utils/providerLogos";
 
-export default function MovieDetails({ movie, similar }) {
+function releaseStatus(dateStr) {
+  if (!dateStr) return "Unknown";
+  const today = new Date().toISOString().split("T")[0];
+  if (dateStr === today) return "Releasing Today";
+  if (dateStr > today) return "Upcoming";
+  return "Released";
+}
+
+export default function MovieDetails({ movie, similar, providers = {}, region = "IN" }) {
   const [trailer, setTrailer] = useState(null);
 
   const video =
@@ -17,9 +26,11 @@ export default function MovieDetails({ movie, similar }) {
   const backdrop = `https://image.tmdb.org/t/p/original${movie.backdrop_path}`;
   const poster = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
 
+  const { streaming = [], rent = [], buy = [] } = providers;
+
   return (
     <div style={{ color: "white", paddingBottom: "50px" }}>
-      {/* Backdrop */}
+      {/* ================= BACKDROP ================= */}
       <div
         style={{
           height: "70vh",
@@ -43,7 +54,7 @@ export default function MovieDetails({ movie, similar }) {
             position: "absolute",
             bottom: "30px",
             left: "40px",
-            width: "50%",
+            width: "55%",
           }}
         >
           <h1 style={{ fontSize: "3rem", fontWeight: "bold" }}>
@@ -54,31 +65,43 @@ export default function MovieDetails({ movie, similar }) {
             {movie.overview}
           </p>
 
-          <div style={{ marginTop: "20px" }}>
-            <button
-              onClick={() => setTrailer(video?.key)}
-              style={{
-                padding: "12px 25px",
-                background: "#ffffff",
-                color: "#000",
-                border: "none",
-                borderRadius: "8px",
-                fontWeight: "bold",
-                cursor: "pointer",
-                marginRight: "15px",
-              }}
-            >
-              ▶ Watch Trailer
-            </button>
+          <div style={{ marginTop: "20px", display: "flex", alignItems: "center", gap: "20px" }}>
+            {video && (
+              <button
+                onClick={() => setTrailer(video.key)}
+                style={{
+                  padding: "12px 25px",
+                  background: "#ffffff",
+                  color: "#000",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                ▶ Watch Trailer
+              </button>
+            )}
 
             <span style={{ fontSize: "18px", opacity: 0.8 }}>
               ⭐ {movie.vote_average.toFixed(1)}
             </span>
+
+            {movie.imdb_id && (
+              <a
+                href={`https://www.imdb.com/title/${movie.imdb_id}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ opacity: 0.7, textDecoration: "underline" }}
+              >
+                IMDb
+              </a>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Poster + Info */}
+      {/* ================= POSTER + INFO ================= */}
       <div
         style={{
           display: "flex",
@@ -99,7 +122,9 @@ export default function MovieDetails({ movie, similar }) {
         <div>
           <h2 style={{ marginBottom: "10px" }}>Movie Info</h2>
 
-          <p><b>Release Date:</b> {movie.release_date}</p>
+          <p>
+            <b>Release Date:</b> {movie.release_date} ({releaseStatus(movie.release_date)})
+          </p>
           <p><b>Runtime:</b> {movie.runtime} min</p>
 
           <p style={{ margin: "20px 0" }}>
@@ -117,20 +142,77 @@ export default function MovieDetails({ movie, similar }) {
               </span>
             ))}
           </p>
+
+          {/* ================= STREAMING PROVIDERS ================= */}
+          {(streaming.length || rent.length || buy.length) > 0 && (
+            <div style={{ marginTop: "20px" }}>
+              {streaming.length > 0 && (
+                <>
+                  <p><b>Available to stream</b></p>
+                  <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
+                    {streaming.map((p) => {
+                      const logo = PROVIDER_LOGOS[p.provider_id];
+                      if (!logo) return null;
+                      return (
+                        <a key={p.provider_id} href={p.link} target="_blank" rel="noreferrer">
+                          <img src={logo} title={p.provider_name} style={{ width: 32 }} />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {rent.length > 0 && (
+                <>
+                  <p><b>Rent</b></p>
+                  <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
+                    {rent.map((p) => {
+                      const logo = PROVIDER_LOGOS[p.provider_id];
+                      if (!logo) return null;
+                      return (
+                        <a key={p.provider_id} href={p.link} target="_blank" rel="noreferrer">
+                          <img src={logo} title={p.provider_name} style={{ width: 28, opacity: 0.8 }} />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {buy.length > 0 && (
+                <>
+                  <p><b>Buy</b></p>
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    {buy.map((p) => {
+                      const logo = PROVIDER_LOGOS[p.provider_id];
+                      if (!logo) return null;
+                      return (
+                        <a key={p.provider_id} href={p.link} target="_blank" rel="noreferrer">
+                          <img src={logo} title={p.provider_name} style={{ width: 28, opacity: 0.8 }} />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Cast */}
+      {/* ================= CAST / SCREENSHOTS / SIMILAR ================= */}
       <CastGrid cast={movie.credits.cast} />
-
-      {/* Screenshots */}
       <Screenshots images={movie.images.backdrops} />
-
-      {/* Similar Movies */}
       <SimilarMovies movies={similar} />
 
-      {/* Trailer Modal */}
-      {trailer && <TrailerModal videoKey={trailer} onClose={() => setTrailer(null)} />}
+      {/* ================= TRAILER MODAL ================= */}
+      {trailer && (
+        <TrailerModal
+          videoKey={trailer}
+          onClose={() => setTrailer(null)}
+        />
+      )}
     </div>
   );
 }

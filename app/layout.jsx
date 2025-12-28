@@ -1,22 +1,28 @@
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-// Add a nice font
 import { Outfit } from "next/font/google";
 
-const outfit = Outfit({ subsets: ["latin"] });
+const outfit = Outfit({
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata = {
-  title: "CINEPHILES",
-  description: "Next Gen Streaming",
+  title: "Cinephiles Watch",
+  description: "A modern movie discovery experience",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={outfit.className}>
-      <body className="bg-[#0a0a0a] text-white">
+    <html lang="en" className={outfit.className} data-theme="dark">
+      <body>
         <Navbar />
-        {/* Removed 'pt-20' so Hero Banner touches top of screen */}
-        <main>
+        <main
+          style={{
+            paddingTop: "80px", // space for fixed navbar
+            minHeight: "100vh",
+          }}
+        >
           {children}
         </main>
       </body>
