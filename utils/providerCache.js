@@ -5,6 +5,8 @@ const providerCache = {};
 
 /**
  * Fetch watch providers for a movie (cached per session)
+ * Providers are OPTIONAL data — failures must NOT break pages
+ *
  * @param {number} movieId - TMDB movie ID
  * @param {string} region - Country code (default: IN)
  * @param {string} apiKey - TMDB API key
@@ -20,31 +22,38 @@ export async function getProviders(movieId, region = "IN", apiKey) {
 
   try {
     const res = await fetch(
-      `https://api.themoviedb.org/3/movie/${movieId}/watch/providers?api_key=${apiKey}`
+      `https://api.themoviedb.org/3/movie/${movieId}/watch/providers?api_key=${apiKey}`,
+      { cache: "no-store" }
     );
 
+    // ⛔ Guard: TMDB may return 404 / reset connection
+    if (!res.ok) {
+      const empty = { streaming: [], rent: [], buy: [] };
+      providerCache[key] = empty;
+      return empty;
+    }
+
     const data = await res.json();
+    const result = data.results?.[region] || {};
 
     const payload = {
-      streaming: data.results?.[region]?.flatrate || [],
-      rent: data.results?.[region]?.rent || [],
-      buy: data.results?.[region]?.buy || [],
+      streaming: result.flatrate || [],
+      rent: result.rent || [],
+      buy: result.buy || [],
     };
 
     providerCache[key] = payload;
     return payload;
-  } catch (error) {
-    console.error("Provider fetch failed:", error);
-    return {
-      streaming: [],
-      rent: [],
-      buy: [],
-    };
+  } catch {
+    // 🔕 SILENT FAIL (network errors like ECONNRESET are expected)
+    const empty = { streaming: [], rent: [], buy: [] };
+    providerCache[key] = empty;
+    return empty;
   }
 }
 
 /**
- * Optional helper to clear cache (useful for debugging)
+ * Optional helper to clear cache (debug only)
  */
 export function clearProviderCache() {
   Object.keys(providerCache).forEach((k) => delete providerCache[k]);

@@ -11,6 +11,7 @@ const providerCache = {};
 
 export default function Row({ title, movies = [], badge }) {
   const [providersByMovie, setProvidersByMovie] = useState({});
+  
 
   async function fetchProviders(movieId, region = "IN") {
     const key = `${movieId}_${region}`;
