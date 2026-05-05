@@ -1,114 +1,158 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { Star, ChevronRight, Play } from "lucide-react";
+import TrailerModal from "./TrailerModal";
+import dynamic from "next/dynamic";
 
-export default function HeroBanner({ movie }) {
-  /* =======================
-     SKELETON (LOADING STATE)
-  ======================= */
+const PlayerModal = dynamic(() => import("./PlayerModal"), { ssr: false });
+const WatchNowModal = dynamic(() => import("./WatchNowModal"), { ssr: false });
+
+const GENRE_MAP = {
+  28: "Action",
+  12: "Adventure",
+  16: "Animation",
+  35: "Comedy",
+  80: "Crime",
+  99: "Documentary",
+  18: "Drama",
+  10751: "Family",
+  14: "Fantasy",
+  36: "History",
+  27: "Horror",
+  10402: "Music",
+  9648: "Mystery",
+  10749: "Romance",
+  878: "Sci-Fi",
+  10770: "TV Movie",
+  53: "Thriller",
+  10752: "War",
+  37: "Western",
+};
+
+export default function HeroBanner({ movie, trailerKey }) {
+  const [showTrailer, setShowTrailer] = useState(false);
+  const [watchModalOpen, setWatchModalOpen] = useState(false);
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const currentScroll = window.scrollY;
+      setScrollProgress((currentScroll / totalScroll) * 100);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   if (!movie) {
-    return (
-      <div
-        className="hero"
-        style={{
-          height: "70vh",
-          background:
-            "linear-gradient(110deg, #111 8%, #222 18%, #111 33%)",
-          backgroundSize: "200% 100%",
-          animation: "skeleton 1.5s infinite linear",
-        }}
-      />
-    );
+    return <div className="hero skeleton" />;
   }
 
+  const rating = movie.vote_average?.toFixed(1);
+  const genres = movie.genre_ids?.slice(0, 1).map(id => GENRE_MAP[id]).join(", ");
+  const year = movie.release_date?.slice(0, 4);
+
+  const releaseDate = movie.release_date ? new Date(movie.release_date) : null;
+  const isComingSoon = releaseDate ? releaseDate > new Date() : false;
+  const isTheatrical = releaseDate ? (new Date() - releaseDate) < (45 * 24 * 60 * 60 * 1000) && (new Date() - releaseDate) >= 0 : false;
+  const showWatchNow = !isComingSoon && !isTheatrical;
+
   return (
-    <section
-      className="hero"
-      style={{
-        position: "relative",
-        height: "70vh",
-        width: "100%",
-        overflow: "hidden",
-      }}
-    >
-      {/* BACKDROP IMAGE (LCP CRITICAL) */}
-      <Image
-        src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
-        alt={movie.title}
-        fill
-        priority
-        sizes="100vw"
-        style={{ objectFit: "cover" }}
-      />
+    <>
+      <section className="hero">
+        <Image
+          src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+          alt={movie.title}
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
+        />
 
-      {/* OVERLAY */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.25))",
-        }}
-      />
+        <div className="hero-overlay" />
 
-      {/* CONTENT */}
-      <div
-        className="hero-content"
-        style={{
-          position: "absolute",
-          bottom: 60,
-          left: 0,
-          right: 0,
-          padding: "0 40px",
-          maxWidth: 900,
-        }}
-      >
-        <h1
-          className="hero-title"
-          style={{
-            fontSize: "2.2rem",
-            fontWeight: 700,
-            marginBottom: 12,
-          }}
-        >
-          {movie.title}
-        </h1>
+        <div className="hero-content">
+          <div className="hero-meta">
+            {rating && (
+              <div className="meta-pill rating">
+                <Star size={14} fill="var(--color-gold)" />
+                <span>{rating}</span>
+              </div>
+            )}
+            {year && (
+              <div className="meta-pill">
+                <span>{year}</span>
+              </div>
+            )}
+            {genres && (
+              <div className="meta-pill">
+                <span>{genres}</span>
+              </div>
+            )}
+            <div className="meta-pill">
+              <span>HD</span>
+            </div>
+          </div>
 
-        <p
-          className="hero-overview"
-          style={{
-            fontSize: "1rem",
-            opacity: 0.85,
-            lineHeight: 1.6,
-            maxWidth: 700,
-          }}
-        >
-          {movie.overview}
-        </p>
-      </div>
+          <h1 className="hero-title">{movie.title}</h1>
 
-      {/* MOBILE REFINEMENTS */}
-      <style jsx>{`
-        @media (max-width: 640px) {
-          .hero {
-            height: 55vh;
-          }
+          <p className="hero-overview">
+            {movie.overview}
+          </p>
 
-          .hero-content {
-            bottom: 16px;
-            padding: 16px;
-          }
+          <div className="hero-btns">
+            {showWatchNow && (
+              <button
+                className="btn-watch-now"
+                onClick={() => {
+                  if (movie.imdb_id) setPlayerOpen(true);
+                  else setWatchModalOpen(true);
+                }}
+              >
+                <Play size={16} fill="currentColor" />
+                <span>Watch Now</span>
+              </button>
+            )}
 
-          .hero-title {
-            font-size: 1.2rem;
-            line-height: 1.3;
-          }
+            <Link href={`/movie/${movie.id}`} className="btn-primary">
+              <span>View Details</span>
+              <ChevronRight size={18} />
+            </Link>
+            
+            {trailerKey && (
+              <button onClick={() => setShowTrailer(true)} className="btn-secondary">
+                <Play size={18} fill="currentColor" />
+                <span>Trailer</span>
+              </button>
+            )}
+          </div>
+        </div>
 
-          .hero-overview {
-            display: none;
-          }
-        }
-      `}</style>
-    </section>
+        <div className="scroll-progress" style={{ width: `${scrollProgress}%` }} />
+      </section>
+
+      {showTrailer && <TrailerModal videoKey={trailerKey} onClose={() => setShowTrailer(false)} />}
+
+      {watchModalOpen && (
+        <WatchNowModal
+          movieId={movie.id}
+          movieTitle={movie.title}
+          imdbId={movie.imdb_id}
+          onClose={() => setWatchModalOpen(false)}
+        />
+      )}
+
+      {playerOpen && (
+        <PlayerModal
+          movieTitle={movie.title}
+          imdbId={movie.imdb_id}
+          onClose={() => setPlayerOpen(false)}
+        />
+      )}
+    </>
   );
 }

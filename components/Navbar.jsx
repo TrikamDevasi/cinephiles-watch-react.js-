@@ -4,6 +4,20 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { 
+  Film, 
+  Bookmark, 
+  Sparkles, 
+  Search, 
+  Menu, 
+  X, 
+  Sun, 
+  Moon,
+  ChevronRight
+} from "lucide-react";
+import AiRecommendations from "./AIPanelRecommend";
+import useWatchlistStore from "@/store/useWatchlistStore";
+import { useThemeStore } from "@/store/useThemeStore";
 
 /* =======================
    IN-MEMORY CACHE
@@ -21,6 +35,12 @@ const GENRES = {
   35: "Comedy",
   18: "Drama",
   27: "Horror",
+  37: "Western",
+  53: "Thriller",
+  80: "Crime",
+  99: "Documentary",
+  878: "Sci-Fi",
+  10749: "Romance",
 };
 
 export default function Navbar() {
@@ -29,62 +49,49 @@ export default function Navbar() {
   const [results, setResults] = useState([]);
   const [popular, setPopular] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [mobileSearch, setMobileSearch] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { watchlist } = useWatchlistStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   const abortRef = useRef(null);
   const boxRef = useRef(null);
   const router = useRouter();
 
-  /* =======================
-     SCROLL EFFECT
-  ======================= */
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /* =======================
-     FETCH POPULAR (ONCE)
-  ======================= */
   useEffect(() => {
     if (cachedPopular) {
       setPopular(cachedPopular);
       return;
     }
-
     async function fetchPopular() {
       try {
-        const res = await fetch(
-          `https://api.themoviedb.org/3/movie/popular?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
-        );
+        const res = await fetch("/api/tmdb/trending");
         const data = await res.json();
-        const movies = (data.results || []).slice(0, 6);
+        const movies = (data.data || []).slice(0, 6);
         cachedPopular = movies;
         setPopular(movies);
       } catch {
         setPopular([]);
       }
     }
-
     fetchPopular();
   }, []);
 
-  /* =======================
-     SEARCH (DEBOUNCED + ABORT)
-  ======================= */
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
-      setHasFetched(false);
       return;
     }
-
     if (cachedSearch[query]) {
       setResults(cachedSearch[query]);
-      setHasFetched(true);
       return;
     }
 
@@ -95,26 +102,16 @@ export default function Navbar() {
     const timer = setTimeout(async () => {
       try {
         setLoading(true);
-        setHasFetched(false);
-
         const res = await fetch(
-          `https://api.themoviedb.org/3/search/movie?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${encodeURIComponent(
-            query
-          )}`,
+          `/api/tmdb/search?q=${encodeURIComponent(query)}`,
           { signal: controller.signal }
         );
-
-        const data = await res.json();
-        const movies = (data.results || []).slice(0, 6);
-
+        const json = await res.json();
+        const movies = (json.data?.results || []).slice(0, 6);
         cachedSearch[query] = movies;
         setResults(movies);
-        setHasFetched(true);
       } catch (e) {
-        if (e.name !== "AbortError") {
-          setResults([]);
-          setHasFetched(true);
-        }
+        if (e.name !== "AbortError") setResults([]);
       } finally {
         setLoading(false);
         setActiveIndex(-1);
@@ -124,21 +121,26 @@ export default function Navbar() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  /* =======================
-     KEYBOARD NAVIGATION
-  ======================= */
   function handleKeyDown(e) {
     const list = results.length > 0 ? results : popular;
     if (!list.length) return;
 
     if (e.key === "ArrowDown") {
+      e.preventDefault();
       setActiveIndex((i) => (i + 1) % list.length);
     }
     if (e.key === "ArrowUp") {
+      e.preventDefault();
       setActiveIndex((i) => (i - 1 + list.length) % list.length);
     }
-    if (e.key === "Enter" && activeIndex >= 0) {
-      selectMovie(list[activeIndex].id);
+    if (e.key === "Enter") {
+      if (activeIndex >= 0) {
+        selectMovie(list[activeIndex].id);
+      } else if (query.trim()) {
+        router.push(`/search?q=${encodeURIComponent(query)}`);
+        setResults([]);
+        setQuery("");
+      }
     }
   }
 
@@ -146,13 +148,10 @@ export default function Navbar() {
     setQuery("");
     setResults([]);
     setActiveIndex(-1);
-    setMobileSearch(false);
+    setMobileMenuOpen(false);
     router.push(`/movie/${id}`);
   }
 
-  /* =======================
-     CLICK OUTSIDE CLOSE
-  ======================= */
   useEffect(() => {
     const handler = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) {
@@ -163,209 +162,183 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  /* =======================
-     TEXT HIGHLIGHT
-  ======================= */
-  function highlight(text) {
-    return text.replace(
-      new RegExp(`(${query})`, "ig"),
-      `<mark style="background:var(--accent);color:white">$1</mark>`
-    );
-  }
-
-  /* =======================
-     SKELETON ROW
-  ======================= */
-  function SkeletonRow() {
-    return (
-      <div style={{ display: "flex", gap: 10, padding: 10 }}>
-        <div style={{ width: 40, height: 60, background: "#222", borderRadius: 6 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ height: 12, width: "70%", background: "#222", borderRadius: 4, marginBottom: 6 }} />
-          <div style={{ height: 10, width: "40%", background: "#222", borderRadius: 4 }} />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
-      {(results.length > 0 || loading) && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backdropFilter: "blur(10px)",
-            background: "rgba(0,0,0,0.4)",
-            zIndex: 40,
-          }}
-        />
-      )}
-
-      <nav
-        style={{
-          position: "fixed",
-          top: 0,
-          width: "100%",
-          zIndex: 50,
-          background: scrolled ? "rgba(0,0,0,0.9)" : "transparent",
-          padding: "14px 32px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        {/* LOGO */}
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            className="logo-wrapper"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              padding: 2,
-              background:
-                "linear-gradient(135deg, var(--accent), transparent 60%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: "50%",
-                overflow: "hidden",
-                background: "var(--bg-soft)",
-                transition: "transform 0.25s ease, box-shadow 0.25s ease",
-              }}
-            >
-              <Image
-                src="https://yt3.ggpht.com/f5IUmMxtzm3akK0IGpSDbJU6akFnsKcnRK8Y802g4lQfRvUJm2D0Z8M3QRK9FxN-tf5ERrrr=s800-c-k-c0x00ffffff-no-rj"
-                alt="Cinephiles Watch"
-                width={40}
-                height={40}
-                style={{ objectFit: "cover" }}
-              />
+      <nav className="navbar" style={{ 
+        background: scrolled ? "var(--navbar-bg)" : "transparent",
+        borderBottomColor: scrolled ? "var(--color-border)" : "transparent"
+      }}>
+        <div className="nav-content">
+          {/* LOGO */}
+          <Link href="/" className="logo">
+            <div className="logo-icon">
+              <Film size={16} />
             </div>
-          </div>
+            <span className="logo-text">CINEPHILES <span className="logo-watch">WATCH</span></span>
+          </Link>
 
-          <span style={{ fontWeight: 700 }}>Cinephiles Watch</span>
-        </Link>
+          {/* SEARCH BAR */}
+          <div className="search-container" ref={boxRef}>
+            <Search className="search-icon" size={18} />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search movies..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+            />
 
-        {/* SEARCH */}
-        <div ref={boxRef} style={{ position: "relative" }}>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => window.innerWidth < 640 && setMobileSearch(true)}
-            placeholder="Search movies"
-            style={{
-              width: 260,
-              padding: "8px 14px",
-              borderRadius: 20,
-              background: "rgba(255,255,255,0.1)",
-              color: "inherit",
-              border: "1px solid rgba(255,255,255,0.2)",
-              outline: "none",
-            }}
-          />
-
-          {query && (
-            <div
-              style={{
-                position: mobileSearch ? "fixed" : "absolute",
-                inset: mobileSearch ? 0 : "auto",
-                top: mobileSearch ? 0 : "110%",
-                width: "100%",
-                height: mobileSearch ? "100vh" : "auto",
-                background: "var(--bg-soft)",
-                borderRadius: mobileSearch ? 0 : 10,
-                zIndex: 60,
-                paddingTop: mobileSearch ? 80 : 0,
-                overflow: "auto",
-              }}
-            >
-              {mobileSearch && (
-                <button
-                  onClick={() => setMobileSearch(false)}
-                  style={{ position: "absolute", top: 20, right: 20 }}
-                >
-                  ✕
-                </button>
-              )}
-
-              {loading &&
-                Array.from({ length: 5 }).map((_, i) => (
-                  <SkeletonRow key={i} />
-                ))}
-
-              {!loading &&
-                results.length > 0 &&
-                results.map((m, i) => (
-                  <div
-                    key={m.id}
-                    onClick={() => selectMovie(m.id)}
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      padding: 10,
-                      cursor: "pointer",
-                      background: i === activeIndex ? "#222" : "transparent",
-                    }}
-                  >
-                    <img
-                      src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                      alt={m.title}
-                      style={{ width: 40, borderRadius: 6 }}
-                    />
-                    <div>
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: highlight(m.title),
-                        }}
-                      />
-                      <div style={{ fontSize: 12, opacity: 0.6 }}>
-                        {GENRES[m.genre_ids?.[0]] || "Movie"} •{" "}
-                        {m.release_date?.slice(0, 4)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-              {!loading && hasFetched && results.length === 0 && (
-                <>
-                  <div style={{ padding: "8px 12px", fontSize: 12, opacity: 0.6 }}>
-                    Popular movies
-                  </div>
-                  {popular.map((m, i) => (
+            {/* SEARCH DROPDOWN */}
+            {query && (results.length > 0 || popular.length > 0) && (
+              <div 
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 12px)",
+                  left: 0,
+                  right: 0,
+                  background: "var(--color-surface)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "var(--radius-lg)",
+                  boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
+                  overflow: "hidden",
+                  zIndex: 200
+                }}
+              >
+                <div style={{ padding: "8px 0" }}>
+                  {(results.length > 0 ? results : popular).map((m, i) => (
                     <div
                       key={m.id}
                       onClick={() => selectMovie(m.id)}
                       style={{
                         display: "flex",
-                        gap: 10,
-                        padding: 10,
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "10px 16px",
                         cursor: "pointer",
-                        background: i === activeIndex ? "#222" : "transparent",
+                        background: i === activeIndex ? "var(--color-surface-2)" : "transparent",
                       }}
                     >
-                      <img
-                        src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                        alt={m.title}
-                        style={{ width: 40, borderRadius: 6 }}
-                      />
-                      <div>{m.title}</div>
+                      <div style={{ width: 40, height: 56, flexShrink: 0, position: "relative" }}>
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
+                          alt={m.title}
+                          fill
+                          style={{ borderRadius: "4px", objectFit: "cover" }}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.title}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
+                          <span style={{ color: "var(--color-accent)", fontSize: "0.7rem", fontWeight: 700 }}>{GENRES[m.genre_ids?.[0]] || "Movie"}</span>
+                          <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>{m.release_date?.slice(0, 4)}</span>
+                        </div>
+                      </div>
                     </div>
                   ))}
-                </>
+                </div>
+                <div 
+                  style={{ 
+                    padding: "12px 16px", 
+                    borderTop: "1px solid var(--color-border)", 
+                    fontSize: "0.75rem", 
+                    color: "var(--color-text-muted)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: "var(--color-surface-2)"
+                  }}
+                >
+                  <span>Enter to see all results</span>
+                  <ChevronRight size={14} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* NAV LINKS (Desktop) */}
+          <div className="nav-links">
+            <Link href="/watchlist" className="nav-link">
+              <Bookmark size={18} />
+              <span>Watchlist</span>
+              {watchlist.length > 0 && (
+                <span style={{ 
+                  background: "var(--color-accent)", 
+                  color: "white", 
+                  fontSize: "10px", 
+                  padding: "1px 6px", 
+                  borderRadius: "var(--radius-pill)",
+                  marginLeft: "-4px"
+                }}>
+                  {watchlist.length}
+                </span>
               )}
-            </div>
-          )}
+            </Link>
+            
+            <button onClick={() => setAiOpen(true)} className="btn-primary" style={{ padding: "8px 16px", height: "38px", minHeight: "auto", minWidth: "auto", borderRadius: "var(--radius-pill)", background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}>
+              <Sparkles size={16} />
+              <span className="btn-text">Magic AI</span>
+            </button>
+
+            <button className="theme-toggle-btn" onClick={toggleTheme} style={{ width: "38px", height: "38px", minHeight: "auto", minWidth: "auto", borderRadius: "50%", background: "var(--color-surface-2)", color: "var(--color-text-primary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--color-border)" }}>
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
+
+          {/* MOBILE CONTROLS */}
+          <div className="mobile-controls">
+            <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
+              <Menu size={24} />
+            </button>
+          </div>
         </div>
       </nav>
+
+      {/* MOBILE DRAWER */}
+      {mobileMenuOpen && (
+        <>
+          <div className="mobile-drawer-overlay" onClick={() => setMobileMenuOpen(false)} />
+          <div className="mobile-drawer">
+            <div className="drawer-header">
+              <div className="drawer-title">Menu</div>
+              <button className="close-drawer-btn" onClick={() => setMobileMenuOpen(false)}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+              <Film size={20} />
+              <span>Browse Movies</span>
+            </Link>
+
+            <Link href="/watchlist" onClick={() => setMobileMenuOpen(false)}>
+              <Bookmark size={20} />
+              <span>My Watchlist ({watchlist.length})</span>
+            </Link>
+            
+            <button onClick={() => { setAiOpen(true); setMobileMenuOpen(false); }}>
+              <Sparkles size={20} />
+              <span>Magic AI Recommend</span>
+            </button>
+            
+            <button onClick={() => { toggleTheme(); setMobileMenuOpen(false); }}>
+              {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      <AiRecommendations isOpen={aiOpen} onClose={() => setAiOpen(false)} />
+      
+      <style jsx>{`
+        @media (max-width: 1024px) {
+          .logo-watch { display: none; }
+        }
+        @media (max-width: 640px) {
+          .logo-text { display: none; }
+        }
+      `}</style>
     </>
   );
 }

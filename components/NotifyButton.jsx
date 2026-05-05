@@ -1,12 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Bell, BellOff } from "lucide-react";
 
-/**
- * NotifyButton
- * Stores movie IDs in localStorage for future notification features
- * (email / push / release-day reminders)
- */
 export default function NotifyButton({ movieId }) {
   const [enabled, setEnabled] = useState(false);
 
@@ -38,20 +34,41 @@ export default function NotifyButton({ movieId }) {
   return (
     <button
       onClick={toggleNotify}
-      style={{
-        marginTop: 8,
-        padding: "6px 10px",
-        fontSize: 12,
-        borderRadius: 6,
-        border: "1px solid rgba(255,255,255,0.2)",
-        background: enabled
-          ? "rgba(22,163,74,0.15)"
-          : "rgba(255,255,255,0.08)",
-        color: enabled ? "#16a34a" : "inherit",
-        cursor: "pointer",
-      }}
+      className={enabled ? "notify-btn enabled" : "notify-btn"}
     >
-      {enabled ? "Notification set" : "Notify me"}
+      {enabled ? <BellOff size={16} /> : <Bell size={16} />}
+      <span>{enabled ? "Cancel Reminder" : "Remind Me on Release"}</span>
+
+      <style jsx>{`
+        .notify-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 20px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--color-border);
+          background: var(--color-surface-2);
+          color: var(--color-text-secondary);
+          transition: var(--transition);
+          margin-top: 24px;
+        }
+        .notify-btn:hover {
+          background: var(--color-surface);
+          border-color: var(--color-text-muted);
+          color: white;
+        }
+        .notify-btn.enabled {
+          background: rgba(22, 163, 74, 0.1);
+          border-color: rgba(22, 163, 74, 0.3);
+          color: #16a34a;
+        }
+        .notify-btn.enabled:hover {
+          background: rgba(22, 163, 74, 0.2);
+          border-color: #16a34a;
+        }
+      `}</style>
     </button>
   );
 }

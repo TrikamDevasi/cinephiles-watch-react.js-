@@ -1,5 +1,9 @@
 "use client";
+
 import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Sparkles, X, Wand2, ChevronRight, Loader2 } from "lucide-react";
 
 export default function AiRecommendations({ isOpen, onClose }) {
   const [mood, setMood] = useState("");
@@ -8,19 +12,37 @@ export default function AiRecommendations({ isOpen, onClose }) {
 
   const getAIRecommendations = async () => {
     if (!mood.trim()) return;
-    
+
     setLoading(true);
     try {
-      const response = await fetch("/api/ai-recommend", {
+      const response = await fetch("/api/ai/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mood }),
       });
       const data = await response.json();
-      setMovies(data.recommendations);
+      
+      const enriched = await Promise.all(
+        (data.recommendations || []).map(async (rec) => {
+          try {
+            const tmdbRes = await fetch(`/api/tmdb/search?q=${encodeURIComponent(rec.title)}`);
+            const tmdbData = await tmdbRes.json();
+            const movie = tmdbData.data?.results?.[0];
+            return {
+              ...rec,
+              id: movie?.id,
+              poster_path: movie?.poster_path
+            };
+          } catch {
+            return rec;
+          }
+        })
+      );
+      
+      setMovies(enriched);
     } catch (error) {
       console.error("OpenAI Error:", error);
-      setMovies([{ title: "Try again!", overview: "Something went wrong" }]);
+      setMovies([{ title: "Error", overview: "Failed to generate recommendations. Please try again." }]);
     }
     setLoading(false);
   };
@@ -28,45 +50,102 @@ export default function AiRecommendations({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-black/95 border border-gray-700 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            🎬 AI Movie Magic
-          </h3>
-          <button onClick={onClose} className="text-2xl">×</button>
-        </div>
-        
-        <div className="space-y-4">
-          <input
-            type="text"
-            placeholder="I'm feeling adventurous, romantic, scary..."
-            value={mood}
-            onChange={(e) => setMood(e.target.value)}
-            className="w-full bg-gray-900 border border-gray-700 rounded-xl px-5 py-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            onKeyPress={(e) => e.key === 'Enter' && getAIRecommendations()}
-          />
-          
-          <button
-            onClick={getAIRecommendations}
-            disabled={loading || !mood.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-4 px-6 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "🤖 AI Thinking..." : "✨ Get Movie Magic"}
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
+      <div className="ai-panel animate-in" onClick={(e) => e.stopPropagation()}>
+        <div className="drawer-header">
+          <div className="ai-title" style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, background: "linear-gradient(135deg, #7c3aed, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            <Sparkles size={20} style={{ color: "#7c3aed" }} />
+            <span>Magic AI</span>
+          </div>
+          <button onClick={onClose} className="close-drawer-btn">
+            <X size={24} />
           </button>
         </div>
 
-        {movies.length > 0 && (
-          <div className="mt-8 space-y-4">
-            <h4 className="text-lg font-semibold text-purple-400">Your AI Picks:</h4>
-            {movies.map((movie, index) => (
-              <div key={index} className="p-5 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl border border-gray-700 hover:border-purple-500 transition-all">
-                <h5 className="font-bold text-white text-lg mb-2">{movie.title}</h5>
-                <p className="text-gray-300 text-sm leading-relaxed">{movie.overview}</p>
-              </div>
-            ))}
+        <div style={{ padding: "1.5rem", flex: 1, overflowY: "auto" }}>
+          <p style={{ fontSize: "0.9rem", color: "var(--color-text-secondary)", marginBottom: "1.5rem", lineHeight: 1.6 }}>
+            Describe your mood or what you want to watch, and our AI will curate a cinematic list just for you.
+          </p>
+
+          <div style={{ position: "relative", marginBottom: "2rem", display: "flex", gap: "10px" }}>
+            <input
+              type="text"
+              placeholder="I'm feeling adventurous and want something sci-fi..."
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && getAIRecommendations()}
+              style={{
+                flex: 1,
+                background: "var(--color-surface-2)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius-md)",
+                padding: "12px 16px",
+                color: "var(--color-text-primary)",
+                fontSize: "0.95rem",
+                outline: "none"
+              }}
+            />
+            <button
+              onClick={getAIRecommendations}
+              disabled={loading || !mood.trim()}
+              style={{
+                width: "48px",
+                height: "48px",
+                background: "linear-gradient(135deg, #7c3aed, #4f46e5)",
+                color: "white",
+                borderRadius: "var(--radius-md)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: (loading || !mood.trim()) ? 0.5 : 1
+              }}
+            >
+              {loading ? <Loader2 size={18} className="spin-icon" /> : <Wand2 size={18} />}
+            </button>
           </div>
-        )}
+
+          {movies.length > 0 && (
+            <div className="ai-results">
+              <h4 style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", letterSpacing: "0.1em", marginBottom: "1.25rem", textTransform: "uppercase" }}>
+                AI Curated Picks
+              </h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {movies.map((movie, index) => (
+                  <div key={index} style={{ display: "flex", gap: "1rem", padding: "1rem", background: "var(--color-surface-2)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
+                    {movie.poster_path ? (
+                      <div style={{ width: "60px", height: "90px", flexShrink: 0, position: "relative", borderRadius: "4px", overflow: "hidden" }}>
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w200${movie.poster_path}`}
+                          alt={movie.title}
+                          fill
+                          style={{ objectFit: "cover" }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ width: "60px", height: "90px", flexShrink: 0, background: "var(--color-surface-3)", borderRadius: "4px" }} />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h5 style={{ fontWeight: 700, marginBottom: "4px", fontSize: "1rem", color: "var(--color-text-primary)" }}>{movie.title}</h5>
+                      <p style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)", lineHeight: 1.4, marginBottom: "8px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {movie.overview}
+                      </p>
+                      {movie.id && (
+                        <Link 
+                          href={`/movie/${movie.id}`}
+                          onClick={onClose}
+                          style={{ fontSize: "0.75rem", fontWeight: 700, color: "#7c3aed", display: "flex", alignItems: "center", gap: "4px", textTransform: "uppercase" }}
+                        >
+                          <span>View Details</span>
+                          <ChevronRight size={14} />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

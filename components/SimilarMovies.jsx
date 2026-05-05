@@ -1,22 +1,39 @@
+"use client";
 import MovieCard from "./MovieCard";
 
 export default function SimilarMovies({ movies = [] }) {
-  return (
-    <div style={{ padding: "40px" }}>
-      <h2>Similar Movies</h2>
+  if (!movies || movies.length === 0) return null;
 
-      <div
-        style={{
-          marginTop: "20px",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-          gap: "20px",
-        }}
-      >
+  return (
+    <section className="similar-movies-section" style={{ marginTop: "4rem" }}>
+      <h2 style={{ 
+        fontSize: "1.5rem", 
+        fontWeight: 700, 
+        marginBottom: "1.5rem",
+        color: "var(--color-text-primary)" 
+      }}>
+        Similar Movies
+      </h2>
+
+      <div className="similar-grid">
         {movies.slice(0, 12).map((m) => (
           <MovieCard key={m.id} movie={m} />
         ))}
       </div>
-    </div>
+
+      <style jsx>{`
+        .similar-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 1.5rem;
+        }
+        @media (max-width: 640px) {
+          .similar-grid {
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 1rem;
+          }
+        }
+      `}</style>
+    </section>
   );
 }

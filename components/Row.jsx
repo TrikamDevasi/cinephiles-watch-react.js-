@@ -1,178 +1,135 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { PROVIDER_LOGOS } from "../utils/providerLogos";
+import { useRef, useState } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
+import MovieCard from "./MovieCard";
 
-/* =======================
-   SESSION CACHE (PROVIDERS)
-======================= */
-const providerCache = {};
+export default function Row({ title, movies = [] }) {
+  const scrollRef = useRef(null);
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(true);
 
-export default function Row({ title, movies = [], badge }) {
-  const [providersByMovie, setProvidersByMovie] = useState({});
-  
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setShowLeft(scrollLeft > 10);
+    setShowRight(scrollLeft < scrollWidth - clientWidth - 10);
+  };
 
-  async function fetchProviders(movieId, region = "IN") {
-    const key = `${movieId}_${region}`;
-    if (providerCache[key]) {
-      setProvidersByMovie((p) => ({ ...p, [movieId]: providerCache[key] }));
-      return;
-    }
+  const scroll = (direction) => {
+    if (!scrollRef.current) return;
+    const { clientWidth } = scrollRef.current;
+    const scrollAmount = direction === "left" ? -clientWidth : clientWidth;
+    scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+  };
 
-    try {
-      const res = await fetch(
-        `https://api.themoviedb.org/3/movie/${movieId}/watch/providers?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}`
-      );
-      const data = await res.json();
-
-      const streaming = data.results?.[region]?.flatrate || [];
-      const rent = data.results?.[region]?.rent || [];
-      const buy = data.results?.[region]?.buy || [];
-
-      const payload = { streaming, rent, buy };
-      providerCache[key] = payload;
-      setProvidersByMovie((p) => ({ ...p, [movieId]: payload }));
-    } catch {
-      setProvidersByMovie((p) => ({ ...p, [movieId]: null }));
-    }
-  }
-
-  function badgeColor(b) {
-    if (b === "OTT") return "#2563eb";
-    if (b === "Today") return "#16a34a";
-    return "#b91c1c";
-  }
-
-  if (!movies.length) return null;
+  if (!movies || movies.length === 0) return null;
 
   return (
-    <section className="row">
-      <h2 style={{ marginBottom: 12, fontSize: "1.2rem", fontWeight: 600 }}>
-        {title}
-      </h2>
-
-      <div
-        style={{
+    <section className="section" style={{ marginBottom: "2rem" }}>
+      <div className="row-header">
+        <h2 className="row-title">
+          {title}
+        </h2>
+        <button className="row-see-all" style={{ 
+          fontSize: "0.85rem", 
+          fontWeight: 600, 
+          color: "var(--color-text-secondary)",
           display: "flex",
-          gap: 12,
-          overflowX: "auto",
-          paddingBottom: 10,
-        }}
-      >
-        {movies.map((movie) => {
-          const providers = providersByMovie[movie.id];
-
-          return (
-            <Link
-              key={movie.id}
-              href={`/movie/${movie.id}`}
-              prefetch={false}
-              style={{ textDecoration: "none" }}
-            >
-              <div
-                className="movie-card"
-                onMouseEnter={() => fetchProviders(movie.id)}
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const rx = (y - rect.height / 2) / 30;
-                  const ry = -(x - rect.width / 2) / 30;
-                  e.currentTarget.style.transform = `
-                    perspective(600px)
-                    rotateX(${rx}deg)
-                    rotateY(${ry}deg)
-                    scale(1.05)
-                  `;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "none";
-                }}
-                style={{
-                  minWidth: 150,
-                  cursor: "pointer",
-                  position: "relative",
-                }}
-              >
-                {/* BADGE */}
-                {badge && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 8,
-                      left: 8,
-                      fontSize: 11,
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                      background: badgeColor(badge),
-                      color: "#fff",
-                      zIndex: 2,
-                    }}
-                  >
-                    {badge}
-                  </span>
-                )}
-
-                {/* POSTER */}
-                <img
-                  src={
-                    movie.poster_path
-                      ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
-                      : "/placeholder.png"
-                  }
-                  alt={movie.title}
-                  loading="lazy"
-                  decoding="async"
-                  style={{ borderRadius: 8 }}
-                />
-
-                {/* PROVIDERS */}
-                {providers && (
-                  <div style={{ marginTop: 6 }}>
-                    {providers.streaming?.length > 0 && (
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 6,
-                          marginBottom: 4,
-                        }}
-                      >
-                        {providers.streaming.map((p) => {
-                          const logo = PROVIDER_LOGOS[p.provider_id];
-                          if (!logo) return null;
-                          return (
-                            <img
-                              key={p.provider_id}
-                              src={logo}
-                              alt={p.provider_name}
-                              title={`Streaming on ${p.provider_name}`}
-                              style={{ width: 22, height: 22 }}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {(providers.rent?.length > 0 ||
-                      providers.buy?.length > 0) && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          opacity: 0.6,
-                          marginTop: 2,
-                        }}
-                      >
-                        Rent / Buy available
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Link>
-          );
-        })}
+          alignItems: "center",
+          gap: "4px"
+        }}>
+          <span>View All</span>
+          <ChevronRight size={14} />
+        </button>
       </div>
+
+      <div className="row-container" onMouseEnter={handleScroll}>
+        {/* SCROLL BUTTONS */}
+        {showLeft && (
+          <button 
+            className="scroll-btn left" 
+            onClick={() => scroll("left")}
+            style={{
+              position: "absolute",
+              left: "1rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 10,
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: "rgba(10, 10, 15, 0.9)",
+              border: "1px solid var(--color-border)",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+            }}
+          >
+            <ChevronLeft size={24} />
+          </button>
+        )}
+        
+        {showRight && (
+          <button 
+            className="scroll-btn right" 
+            onClick={() => scroll("right")}
+            style={{
+              position: "absolute",
+              right: "1rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 10,
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              background: "rgba(10, 10, 15, 0.9)",
+              border: "1px solid var(--color-border)",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+            }}
+          >
+            <ChevronRight size={24} />
+          </button>
+        )}
+
+        <div 
+          className="row-scroll" 
+          ref={scrollRef}
+          onScroll={handleScroll}
+        >
+          {movies.map((movie) => (
+            <MovieCard key={movie.id} movie={movie} />
+          ))}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .row-see-all {
+          opacity: 0;
+          transition: var(--transition);
+        }
+        .section:hover .row-see-all {
+          opacity: 1;
+        }
+        .scroll-btn {
+          opacity: 0;
+          transition: var(--transition);
+        }
+        .row-container:hover .scroll-btn {
+          opacity: 1;
+        }
+        @media (max-width: 640px) {
+          .scroll-btn {
+            display: none !important;
+          }
+        }
+      `}</style>
     </section>
   );
 }

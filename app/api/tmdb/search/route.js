@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchTMDB } from "@/lib/tmdb";
 
 export async function GET(request) {
   try {
@@ -12,16 +13,13 @@ export async function GET(request) {
       );
     }
 
-    const apiKey = process.env.TMDB_API_KEY;
-    const url = `https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${query}`;
-
-    const res = await fetch(url);
-    const data = await res.json();
+    const data = await fetchTMDB("/search/movie", { query });
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
+    console.error("API Search Error:", error);
     return NextResponse.json(
-      { success: false, error: "Server Error" },
+      { success: false, error: error.message || "Server Error" },
       { status: 500 }
     );
   }

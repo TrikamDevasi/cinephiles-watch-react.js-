@@ -1,4 +1,5 @@
 export default function CastGrid({ cast = [] }) {
+  if (!Array.isArray(cast)) return null;
   return (
     <div style={{ padding: "40px" }}>
       <h2>Cast</h2>

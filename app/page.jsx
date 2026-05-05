@@ -1,11 +1,12 @@
-import axios from "axios";
+import { fetchTMDB } from "@/lib/tmdb";
 import Row from "@/components/Row";
+import RegionSwitcher from "@/components/RegionSwitcher";
+import TraktRow from "@/components/TraktRow";
 import HeroBanner from "@/components/HeroBanner";
+import { Globe } from "lucide-react";
+import { getTraktTrending, getTraktAnticipated, getTraktBoxOffice } from "@/lib/trakt";
 
 export default async function HomePage({ searchParams }) {
-  const API_KEY = process.env.TMDB_API_KEY;
-  const BASE_URL = "https://api.themoviedb.org/3";
-
   // Region switcher (default: IN)
   const region = searchParams?.region === "US" ? "US" : "IN";
 
@@ -25,57 +26,73 @@ export default async function HomePage({ searchParams }) {
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-  async function get(endpoint) {
-    try {
-      const res = await axios.get(`${BASE_URL}${endpoint}`, {
-        params: { api_key: API_KEY },
-      });
-      return res.data.results || [];
-    } catch {
-      return [];
-    }
+  let data = {
+    trending: [],
+    topRated: [],
+    comingThisWeek: [],
+    comingThisMonth: [],
+    ottThisMonth: [],
+  };
+
+  try {
+    const [
+      trending,
+      topRated,
+      comingThisWeek,
+      comingThisMonth,
+      ottThisMonth,
+    ] = await Promise.all([
+      fetchTMDB("/trending/movie/week").then(d => d.results || []),
+      fetchTMDB("/movie/top_rated").then(d => d.results || []),
+
+      // Theatrical – coming this week
+      fetchTMDB("/discover/movie", {
+        region,
+        with_release_type: "2|3",
+        "release_date.gte": formatDate(startOfWeek),
+        "release_date.lte": formatDate(endOfWeek),
+        sort_by: "popularity.desc"
+      }).then(d => d.results || []),
+
+      // Theatrical – coming this month
+      fetchTMDB("/discover/movie", {
+        region,
+        with_release_type: "2|3",
+        "release_date.gte": formatDate(startOfMonth),
+        "release_date.lte": formatDate(endOfMonth),
+        sort_by: "popularity.desc"
+      }).then(d => d.results || []),
+
+      // OTT releases this month
+      fetchTMDB("/discover/movie", {
+        region,
+        with_release_type: 4,
+        "release_date.gte": formatDate(startOfMonth),
+        "release_date.lte": formatDate(endOfMonth),
+        sort_by: "popularity.desc"
+      }).then(d => d.results || []),
+    ]);
+
+    data = { trending, topRated, comingThisWeek, comingThisMonth, ottThisMonth };
+  } catch (err) {
+    console.error("Home page fetch error:", err);
   }
 
   /* =======================
-     FETCH DATA
+     TRAKT FETCH
   ======================= */
-  const [
-    trending,
-    topRated,
-    comingThisWeek,
-    comingThisMonth,
-    ottThisMonth,
-  ] = await Promise.all([
-    get("/trending/movie/week"),
-    get("/movie/top_rated"),
-
-    // Theatrical – coming this week
-    get(
-      `/discover/movie?region=${region}&with_release_type=3&primary_release_date.gte=${formatDate(
-        startOfWeek
-      )}&primary_release_date.lte=${formatDate(
-        endOfWeek
-      )}&sort_by=primary_release_date.asc`
-    ),
-
-    // Theatrical – coming this month
-    get(
-      `/discover/movie?region=${region}&with_release_type=3&primary_release_date.gte=${formatDate(
-        startOfMonth
-      )}&primary_release_date.lte=${formatDate(
-        endOfMonth
-      )}&sort_by=primary_release_date.asc`
-    ),
-
-    // OTT releases this month
-    get(
-      `/discover/movie?with_release_type=4&primary_release_date.gte=${formatDate(
-        startOfMonth
-      )}&primary_release_date.lte=${formatDate(
-        endOfMonth
-      )}&sort_by=primary_release_date.desc`
-    ),
+  const [traktTrendingRes, anticipatedRes, boxOfficeRes] = await Promise.allSettled([
+    getTraktTrending(),
+    getTraktAnticipated(),
+    getTraktBoxOffice(),
   ]);
+
+  const traktTrending = traktTrendingRes.status === "fulfilled" ? traktTrendingRes.value : [];
+  const anticipated = anticipatedRes.status === "fulfilled" ? anticipatedRes.value : [];
+  const boxOffice = boxOfficeRes.status === "fulfilled" ? boxOfficeRes.value : [];
+
+  const { trending, topRated, comingThisWeek, comingThisMonth, ottThisMonth } = data;
+
 
   /* =======================
      RELEASING TODAY
@@ -86,8 +103,27 @@ export default async function HomePage({ searchParams }) {
 
   const heroMovie =
     trending.length > 0
-      ? trending[Math.floor(Math.random() * trending.length)]
+      ? trending[new Date().getDay() % trending.length]
       : null;
+
+  let heroTrailerKey = null;
+  let fullHeroMovie = heroMovie;
+
+  if (heroMovie) {
+    try {
+      // Fetch full details to get imdb_id and videos
+      const fullData = await fetchTMDB(`/movie/${heroMovie.id}`, { append_to_response: "videos" });
+      fullHeroMovie = fullData;
+      
+      const video = fullData.videos?.results?.find(
+        (v) => v.type === "Trailer" && v.site === "YouTube"
+      );
+      heroTrailerKey = video?.key || null;
+    } catch (err) {
+      console.error("Hero movie detail fetch error:", err);
+      heroTrailerKey = null;
+    }
+  }
 
   /* =======================
      SEO STRUCTURED DATA
@@ -96,90 +132,90 @@ export default async function HomePage({ searchParams }) {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Cinephiles Watch",
-    url: "https://cinephiles-watch-react-js.onrender.com",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "https://cinephiles-watch-react-js.onrender.com",
     potentialAction: {
       "@type": "SearchAction",
       target:
-        "https://cinephiles-watch-react-js.onrender.com/?q={search_term_string}",
+        `${process.env.NEXT_PUBLIC_BASE_URL || "https://cinephiles-watch-react-js.onrender.com"}/search?q={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   };
 
   return (
-    <>
+    <div className="animate-in">
       {/* SEO */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <HeroBanner movie={heroMovie} />
-      <div className="hero-gradient" />
+      <HeroBanner movie={fullHeroMovie} trailerKey={heroTrailerKey} />
 
-      <div className="container" style={{ paddingBottom: "80px" }}>
+      <div className="container" style={{ paddingBottom: "100px", marginTop: "-40px", position: "relative", zIndex: 10 }}>
         {/* REGION SWITCHER */}
-        <div style={{ marginBottom: 24, opacity: 0.8 }}>
-          Region:{" "}
-          <a href="/?region=IN">India</a> |{" "}
-          <a href="/?region=US">United States</a>
+        <div className="region-switcher-container">
+          <RegionSwitcher />
         </div>
 
         {/* RELEASING TODAY */}
         {releasingToday.length > 0 && (
-          <div className="section">
-            <Row
-              title="Releasing Today"
-              movies={releasingToday}
-              badge="Today"
-            />
-          </div>
+          <Row
+            title="Releasing Today"
+            movies={releasingToday}
+          />
         )}
 
-        <div className="section">
-          <Row title="Trending Now" movies={trending} />
-        </div>
-
-        <div className="section">
-          <Row title="Top Rated" movies={topRated} />
-        </div>
+        <Row title="Trending Now" movies={trending} />
+        
+        <Row title="Top Rated Movies" movies={topRated} />
 
         {/* COMING THIS WEEK */}
-        {comingThisWeek.length > 0 ? (
-          <div className="section">
-            <Row
-              title={`Coming This Week (${region})`}
-              movies={comingThisWeek}
-              badge="Theatrical"
-            />
-          </div>
-        ) : (
-          <p style={{ opacity: 0.6 }}>
-            No theatrical releases scheduled this week.
-          </p>
+        {comingThisWeek.length > 0 && (
+          <Row
+            title={`Theatrical Releases: This Week`}
+            movies={comingThisWeek}
+          />
         )}
 
         {/* COMING THIS MONTH */}
         {comingThisMonth.length > 0 && (
-          <div className="section">
-            <Row
-              title={`Coming This Month (${region})`}
-              movies={comingThisMonth}
-              badge="Theatrical"
-            />
-          </div>
+          <Row
+            title={`Theatrical Releases: This Month`}
+            movies={comingThisMonth}
+          />
         )}
 
         {/* OTT THIS MONTH */}
         {ottThisMonth.length > 0 && (
-          <div className="section">
-            <Row
-              title="New on OTT (This Month)"
-              movies={ottThisMonth}
-              badge="OTT"
-            />
-          </div>
+          <Row
+            movies={ottThisMonth}
+          />
         )}
+
+        {/* TRAKT SECTION */}
+        <div style={{ marginTop: "4rem", paddingTop: "4rem", borderTop: "1px solid var(--color-border)" }}>
+          <TraktRow
+            title="Trakt Live Trending"
+            subtitle="Movies being watched right now"
+            items={traktTrending}
+            showWatchers={true}
+          />
+
+          <TraktRow
+            title="Most Anticipated"
+            subtitle="Community hype leaderboard"
+            items={anticipated}
+            showWatchers={false}
+          />
+
+          <TraktRow
+            title="US Box Office"
+            subtitle="Top theatrical performers this weekend"
+            items={boxOffice}
+            showWatchers={false}
+          />
+        </div>
       </div>
-    </>
+    </div>
   );
 }
