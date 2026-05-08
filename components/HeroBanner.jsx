@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Star, ChevronRight, Play } from "lucide-react";
+import { Star, ChevronRight, Play, BookmarkPlus, Check } from "lucide-react";
 import TrailerModal from "./TrailerModal";
 import dynamic from "next/dynamic";
+import useWatchlistStore from "@/store/useWatchlistStore";
 
 const PlayerModal = dynamic(() => import("./PlayerModal"), { ssr: false });
 const WatchNowModal = dynamic(() => import("./WatchNowModal"), { ssr: false });
@@ -37,6 +38,17 @@ export default function HeroBanner({ movie, trailerKey }) {
   const [watchModalOpen, setWatchModalOpen] = useState(false);
   const [playerOpen, setPlayerOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  const { watchlist, addToWatchlist, removeFromWatchlist } = useWatchlistStore();
+  const isInWatchlist = movie ? watchlist.some((m) => m.id === movie.id) : false;
+
+  const handleWatchlist = () => {
+    if (isInWatchlist) {
+      removeFromWatchlist(movie.id);
+    } else {
+      addToWatchlist(movie);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -122,6 +134,14 @@ export default function HeroBanner({ movie, trailerKey }) {
               <span>View Details</span>
               <ChevronRight size={18} />
             </Link>
+
+            <button 
+              className={`btn-secondary cta ${isInWatchlist ? 'active' : ''}`}
+              onClick={handleWatchlist}
+            >
+              {isInWatchlist ? <Check size={18} /> : <BookmarkPlus size={18} />}
+              <span>{isInWatchlist ? "In Watchlist" : "Add to Watchlist"}</span>
+            </button>
             
             {trailerKey && (
               <button onClick={() => setShowTrailer(true)} className="btn-secondary">
