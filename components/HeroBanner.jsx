@@ -65,7 +65,7 @@ export default function HeroBanner({ movie, trailerKey }) {
     <>
       <section className="hero">
         <Image
-          src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+          src={`https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`}
           alt={movie.title}
           fill
           priority
@@ -107,7 +107,7 @@ export default function HeroBanner({ movie, trailerKey }) {
           <div className="hero-btns">
             {showWatchNow && (
               <button
-                className="btn-watch-now"
+                className="btn-watch-now cta"
                 onClick={() => {
                   if (movie.imdb_id) setPlayerOpen(true);
                   else setWatchModalOpen(true);
@@ -118,7 +118,7 @@ export default function HeroBanner({ movie, trailerKey }) {
               </button>
             )}
 
-            <Link href={`/movie/${movie.id}`} className="btn-primary">
+            <Link href={`/movie/${movie.id}`} className="btn-primary cta">
               <span>View Details</span>
               <ChevronRight size={18} />
             </Link>
