@@ -14,7 +14,7 @@ const slugify = (text) =>
     .replace(/-+$/, "");
 
 export default function PlayerModal({ movieTitle, imdbId, season, episode, isSeries, onClose }) {
-  const [activeSource, setActiveSource] = useState("multimovies"); // "playimdb" | "multimovies"
+  const [activeSource, setActiveSource] = useState(isSeries ? "multimovies" : "playimdb"); // Default to Auto for movies, Server 1 for series
   const [activeServer, setActiveServer] = useState("server1"); // "server1" | "server2"
   const [contentNotFound, setContentNotFound] = useState(false);
   const videoRef = useRef(null);
