@@ -14,7 +14,7 @@ const slugify = (text) =>
     .replace(/-+$/, "");
 
 export default function PlayerModal({ movieTitle, imdbId, season, episode, isSeries, onClose }) {
-  const [activeSource, setActiveSource] = useState("playimdb"); // "playimdb" | "multimovies"
+  const [activeSource, setActiveSource] = useState("multimovies"); // "playimdb" | "multimovies"
   const [activeServer, setActiveServer] = useState("server1"); // "server1" | "server2"
   const [contentNotFound, setContentNotFound] = useState(false);
   const videoRef = useRef(null);
@@ -46,7 +46,7 @@ export default function PlayerModal({ movieTitle, imdbId, season, episode, isSer
     : `/movies/${slug}/master.m3u8`;
 
   const multimoviesUrl = `https://${activeServer}.uns.bio${streamPath}`;
-  const playimdbUrl = `${process.env.NEXT_PUBLIC_STREAM_URL || "https://www.playimdb.com/title/"}${imdbId}`;
+  const playimdbUrl = `https://playimdb.com/title/${imdbId}/`;
 
   useEffect(() => {
     if (activeSource === "multimovies" && videoRef.current) {
