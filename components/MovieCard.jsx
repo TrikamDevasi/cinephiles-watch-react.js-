@@ -44,9 +44,9 @@ export default function MovieCard({ movie }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/tmdb/movie/${movie.id}`);
+      const res = await fetch(`/api/tmdb/movie?id=${movie.id}`);
       const data = await res.json();
-      setImdbId(data.imdb_id);
+      setImdbId(data.data?.imdb_id);
       setPlayerOpen(true);
     } catch (error) {
       console.error("Failed to fetch movie details:", error);

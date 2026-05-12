@@ -55,9 +55,9 @@ export default function SeriesCard({ series }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/tmdb/series/${tmdbId}`);
+      const res = await fetch(`/api/tmdb/series?id=${tmdbId}`);
       const data = await res.json();
-      setImdbId(data.external_ids?.imdb_id);
+      setImdbId(data.data?.external_ids?.imdb_id);
       setPlayerOpen(true);
     } catch (error) {
       console.error("Failed to fetch series details:", error);

@@ -82,8 +82,7 @@ export default function MovieDetails({
 
   const releaseDate = movie?.release_date ? new Date(movie.release_date) : null;
   const isComingSoon = releaseDate ? releaseDate > new Date() : false;
-  const isTheatrical = releaseDate ? (new Date() - releaseDate) < (45 * 24 * 60 * 60 * 1000) && (new Date() - releaseDate) >= 0 : false;
-  const showWatchNow = !isComingSoon && !isTheatrical;
+  const showWatchNow = releaseDate && !isComingSoon;
 
   return (
     <div className="movie-details-page animate-in">
@@ -134,13 +133,7 @@ export default function MovieDetails({
             {showWatchNow && (
               <button
                 className="btn-watch-now"
-                onClick={() => {
-                  if (movie?.imdb_id) {
-                    setPlayerOpen(true);
-                  } else {
-                    setWatchModalOpen(true);
-                  }
-                }}
+                onClick={() => setPlayerOpen(true)}
               >
                 <Play size={16} fill="currentColor" />
                 Watch Now

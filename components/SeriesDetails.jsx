@@ -122,6 +122,29 @@ export default function SeriesDetails({ series }) {
       (v) => v.type === "Trailer" && v.site === "YouTube"
     ) || null;
 
+  const isReleased = series?.first_air_date && new Date(series.first_air_date) <= new Date();
+
+  const handleWatchNow = async () => {
+    if (series?.external_ids?.imdb_id) {
+      setPlayerOpen(true);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/tmdb/series?id=${series.id}`);
+      const data = await res.json();
+      const fetchedImdbId = data.data?.external_ids?.imdb_id;
+      if (fetchedImdbId) {
+        if (!series.external_ids) series.external_ids = {};
+        series.external_ids.imdb_id = fetchedImdbId;
+      }
+    } catch (error) {
+      console.error("Failed to fetch series IMDb ID:", error);
+    } finally {
+      setPlayerOpen(true);
+    }
+  };
+
   return (
     <div className="movie-details-page animate-in">
       {/* HERO SECTION */}
@@ -159,10 +182,10 @@ export default function SeriesDetails({ series }) {
           <p className="movie-hero-overview">{series?.overview}</p>
 
           <div className="movie-hero-actions">
-            {series?.external_ids?.imdb_id && (
+            {isReleased && (
               <button
                 className="btn-watch-now"
-                onClick={() => setPlayerOpen(true)}
+                onClick={handleWatchNow}
               >
                 <Play size={16} fill="currentColor" />
                 Watch Now
