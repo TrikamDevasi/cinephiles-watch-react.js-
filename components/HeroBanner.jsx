@@ -33,7 +33,7 @@ const GENRE_MAP = {
   37: "Western",
 };
 
-export default function HeroBanner({ movie, trailerKey }) {
+export default function HeroBanner({ movie, trailerKey, contentType = "movie" }) {
   const [showTrailer, setShowTrailer] = useState(false);
   const [watchModalOpen, setWatchModalOpen] = useState(false);
   const [playerOpen, setPlayerOpen] = useState(false);
@@ -130,7 +130,7 @@ export default function HeroBanner({ movie, trailerKey }) {
               </button>
             )}
 
-            <Link href={`/movie/${movie.id}`} className="btn-primary cta">
+            <Link href={`/${contentType}/${movie.id}`} className="btn-primary cta">
               <span>View Details</span>
               <ChevronRight size={18} />
             </Link>

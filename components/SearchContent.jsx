@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import MovieCard from "@/components/MovieCard";
+import SeriesCard from "@/components/SeriesCard";
 import { Search, Film, Loader2 } from "lucide-react";
 
 export default function SearchContent() {
@@ -108,8 +109,12 @@ export default function SearchContent() {
             Found {results.length} results for "{q}"
           </div>
           <div className="search-results-grid">
-            {results.map((movie) => (
-              <MovieCard key={movie.id} movie={movie} />
+            {results.map((item) => (
+              item.media_type === "tv" ? (
+                <SeriesCard key={item.id} series={item} />
+              ) : (
+                <MovieCard key={item.id} movie={item} />
+              )
             ))}
           </div>
         </>

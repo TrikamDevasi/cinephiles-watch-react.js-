@@ -13,7 +13,8 @@ import {
   X, 
   Sun, 
   Moon,
-  ChevronRight
+  ChevronRight,
+  Play
 } from "lucide-react";
 import AiRecommendations from "./AIPanelRecommend";
 import useWatchlistStore from "@/store/useWatchlistStore";
@@ -135,7 +136,7 @@ export default function Navbar() {
     }
     if (e.key === "Enter") {
       if (activeIndex >= 0) {
-        selectMovie(list[activeIndex].id);
+        selectMovie(list[activeIndex]);
       } else if (query.trim()) {
         router.push(`/search?q=${encodeURIComponent(query)}`);
         setResults([]);
@@ -144,12 +145,12 @@ export default function Navbar() {
     }
   }
 
-  function selectMovie(id) {
+  function selectMovie(item) {
     setQuery("");
     setResults([]);
     setActiveIndex(-1);
     setMobileMenuOpen(false);
-    router.push(`/movie/${id}`);
+    router.push(item.media_type === "tv" ? `/series/${item.id}` : `/movie/${item.id}`);
   }
 
   useEffect(() => {
@@ -209,7 +210,7 @@ export default function Navbar() {
                   {(results.length > 0 ? results : popular).map((m, i) => (
                     <div
                       key={m.id}
-                      onClick={() => selectMovie(m.id)}
+                      onClick={() => selectMovie(m)}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -222,16 +223,20 @@ export default function Navbar() {
                       <div style={{ width: 40, height: 56, flexShrink: 0, position: "relative" }}>
                         <Image
                           src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                          alt={m.title}
+                          alt={m.title || m.name}
                           fill
                           style={{ borderRadius: "4px", objectFit: "cover" }}
                         />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.title}</div>
+                        <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.title || m.name}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px" }}>
-                          <span style={{ color: "var(--color-accent)", fontSize: "0.7rem", fontWeight: 700 }}>{GENRES[m.genre_ids?.[0]] || "Movie"}</span>
-                          <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>{m.release_date?.slice(0, 4)}</span>
+                          <span style={{ color: "var(--color-accent)", fontSize: "0.7rem", fontWeight: 700 }}>
+                            {GENRES[m.genre_ids?.[0]] || (m.media_type === "tv" ? "TV Show" : "Movie")}
+                          </span>
+                          <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                            {(m.release_date || m.first_air_date)?.slice(0, 4)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -258,6 +263,10 @@ export default function Navbar() {
 
           {/* NAV LINKS (Desktop) */}
           <div className="nav-links">
+            <Link href="/series" className="nav-link">
+              <Play size={18} />
+              <span>Series</span>
+            </Link>
             <Link href="/watchlist" className="nav-link">
               <Bookmark size={18} />
               <span>Watchlist</span>
@@ -309,6 +318,11 @@ export default function Navbar() {
             <Link href="/" onClick={() => setMobileMenuOpen(false)}>
               <Film size={20} />
               <span>Browse Movies</span>
+            </Link>
+
+            <Link href="/series" onClick={() => setMobileMenuOpen(false)}>
+              <Play size={20} />
+              <span>Series</span>
             </Link>
 
             <Link href="/watchlist" onClick={() => setMobileMenuOpen(false)}>

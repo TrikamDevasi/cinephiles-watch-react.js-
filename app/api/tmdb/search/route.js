@@ -15,9 +15,17 @@ export async function GET(request) {
       );
     }
 
-    const data = await fetchTMDB("/search/movie", { query });
+    const data = await fetchTMDB("/search/multi", { query });
+    
+    // Filter out people, keep only movies and tv
+    const filteredResults = data.results?.filter(
+      (item) => item.media_type === "movie" || item.media_type === "tv"
+    ) || [];
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ 
+      success: true, 
+      data: { ...data, results: filteredResults } 
+    });
   } catch (error) {
     console.error("API Search Error:", error);
     return NextResponse.json(
