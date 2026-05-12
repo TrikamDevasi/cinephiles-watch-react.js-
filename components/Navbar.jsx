@@ -171,7 +171,7 @@ export default function Navbar() {
       }}>
         <div className="nav-content">
           {/* LOGO */}
-          <Link href="/" className="logo">
+          <a href="/" className="logo">
             <div className="logo-icon" style={{ width: "28px", height: "28px", overflow: "hidden", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-surface-2)" }}>
               <img 
                 src="/default-1778606634.jpg"
@@ -184,7 +184,7 @@ export default function Navbar() {
               />
             </div>
             <span className="logo-text">CINEPHILES <span className="logo-watch">WATCH</span></span>
-          </Link>
+          </a>
 
           {/* SEARCH BAR */}
           <div className="search-container" ref={boxRef}>
