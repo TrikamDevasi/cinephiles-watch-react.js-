@@ -366,6 +366,9 @@ export default function SeriesDetails({ series }) {
         <PlayerModal
           movieTitle={series.name}
           imdbId={series.external_ids?.imdb_id}
+          season={savedSeries?.currentSeason || 1}
+          episode={savedSeries?.currentEpisode || 1}
+          isSeries={true}
           onClose={() => setPlayerOpen(false)}
         />
       )}

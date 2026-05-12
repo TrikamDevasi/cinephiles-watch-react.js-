@@ -1,12 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, BookmarkPlus, Check } from "lucide-react";
+import { Star, BookmarkPlus, Check, Play, Loader2 } from "lucide-react";
 import useSeriesStore from "@/store/seriesStore";
+import PlayerModal from "@/components/PlayerModal";
 
 export default function SeriesCard({ series }) {
   const { seriesList, addSeries, removeSeries } = useSeriesStore();
+
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [imdbId, setImdbId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const tmdbId = series.id || series.tmdbId;
   const isInList = seriesList.some((s) => s.tmdbId === tmdbId);
@@ -37,6 +43,30 @@ export default function SeriesCard({ series }) {
       });
     }
   };
+
+  const handleWatchNow = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (imdbId) {
+      setPlayerOpen(true);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/tmdb/series/${tmdbId}`);
+      const data = await res.json();
+      setImdbId(data.external_ids?.imdb_id);
+      setPlayerOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch series details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isReleased = (series.first_air_date || series.firstAirDate) && new Date(series.first_air_date || series.firstAirDate) <= new Date();
 
   const statusColors = {
     to_watch: "bg-gray-600",
@@ -95,7 +125,18 @@ export default function SeriesCard({ series }) {
         </div>
 
         {/* QUICK ACTIONS OVERLAY */}
-        <div className="card-hover-overlay">
+        <div className="card-hover-overlay" style={{ display: "flex", gap: "8px" }}>
+          {isReleased && (
+            <button 
+              className="card-play-btn"
+              onClick={handleWatchNow}
+              title="Watch Now"
+              disabled={loading}
+              style={{ minHeight: "44px", minWidth: "44px" }}
+            >
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} fill="white" />}
+            </button>
+          )}
           <button
             className={`card-add-btn ${isInList ? "active" : ""}`}
             onClick={handleWatchlist}
@@ -106,6 +147,41 @@ export default function SeriesCard({ series }) {
           </button>
         </div>
       </div>
+
+      {playerOpen && (
+        <PlayerModal
+          movieTitle={series.name || series.title}
+          imdbId={imdbId}
+          season={currentSeason}
+          episode={currentEpisode}
+          isSeries={true}
+          onClose={() => setPlayerOpen(false)}
+        />
+      )}
+
+      <style jsx>{`
+        .card-play-btn {
+          background: var(--color-accent);
+          color: white;
+          border: none;
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-play-btn:hover {
+          transform: scale(1.1);
+          box-shadow: 0 0 15px var(--color-accent);
+        }
+        .card-play-btn:disabled {
+          background: #333;
+          cursor: not-allowed;
+        }
+      `}</style>
 
       <div className="movie-card-info">
         <h3 className="movie-card-title">{series.name || series.title}</h3>
