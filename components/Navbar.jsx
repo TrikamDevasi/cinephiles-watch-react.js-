@@ -172,8 +172,16 @@ export default function Navbar() {
         <div className="nav-content">
           {/* LOGO */}
           <Link href="/" className="logo">
-            <div className="logo-icon">
-              <Film size={16} />
+            <div className="logo-icon" style={{ width: "28px", height: "28px", overflow: "hidden", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-surface-2)" }}>
+              <img 
+                src="/default-1778606634.jpg"
+                alt="Logo"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentNode.innerHTML = '<span style="font-size: 16px;">🎬</span>';
+                }}
+              />
             </div>
             <span className="logo-text">CINEPHILES <span className="logo-watch">WATCH</span></span>
           </Link>
