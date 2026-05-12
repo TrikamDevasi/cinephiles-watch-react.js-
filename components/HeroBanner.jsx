@@ -120,9 +120,27 @@ export default function HeroBanner({ movie, trailerKey, contentType = "movie" })
             {showWatchNow && (
               <button
                 className="btn-watch-now cta"
-                onClick={() => {
-                  if (movie.imdb_id) setPlayerOpen(true);
-                  else setWatchModalOpen(true);
+                onClick={async () => {
+                  if (movie.imdb_id) {
+                    setPlayerOpen(true);
+                    return;
+                  }
+                  
+                  try {
+                    const res = await fetch(`/api/tmdb/${contentType}?id=${movie.id}`);
+                    const data = await res.json();
+                    const fetchedImdbId = contentType === "series" 
+                      ? data.data?.external_ids?.imdb_id 
+                      : data.data?.imdb_id;
+                      
+                    if (fetchedImdbId) {
+                      movie.imdb_id = fetchedImdbId;
+                    }
+                  } catch (error) {
+                    console.error("Failed to fetch IMDb ID in HeroBanner:", error);
+                  } finally {
+                    setPlayerOpen(true);
+                  }
                 }}
               >
                 <Play size={16} fill="currentColor" />
